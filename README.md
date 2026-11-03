@@ -83,3 +83,4 @@ window.NANSHAN_GAME_CONFIG = {
 - 發布分組使用 Firestore transaction：再次確認活動狀態與 24 位玩家均已完成作答，避免多個主持人分頁競爭更新。
 - **純 HTML 單人開啟**仍可體驗畫面，但每支手機互相獨立，無法管理四組上限。要讓 24 位學員真的各分到 6 人，請在 GitHub Pages 部署完整專案，並連接 Firebase。
 - 已移除首頁原本的模式提示，避免干擾活動畫面。
+- GitHub Pages 部署：main 分支 / (root)
