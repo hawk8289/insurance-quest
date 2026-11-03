@@ -5,10 +5,10 @@
  */
 window.NANSHAN_GAME_CONFIG = {
   firebase: {
-    apiKey: "貼上你的 Firebase apiKey",
+    apiKey: "AIzaSyDjXde6ie06LyBGH6QkRwz4CBVR5a9tDak",
     authDomain: "insurance-quest-40470.firebaseapp.com",
     projectId: "insurance-quest-40470",
-    appId: "貼上你的 Firebase appId"
+    appId: "1:846994527583:web:72c5f3e4de08924e48d2ea"
   },
   maxPlayers: 24,
   teamSize: 6
