@@ -4,7 +4,12 @@
  * 未設定雲端服務時，各裝置僅能獨立預覽，無法進行 24 人平均分組。
  */
 window.NANSHAN_GAME_CONFIG = {
-  firebase: null,
+  firebase: {
+    apiKey: "貼上你的 Firebase apiKey",
+    authDomain: "insurance-quest-40470.firebaseapp.com",
+    projectId: "insurance-quest-40470",
+    appId: "貼上你的 Firebase appId"
+  },
   maxPlayers: 24,
   teamSize: 6
 };
