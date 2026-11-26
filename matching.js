@@ -1,4 +1,4 @@
-import { roleScores } from './questions.js';
+mport { roleScores } from './questions.js';
 
 /**
  * Assign 25 players across four teams as 6 / 6 / 6 / 7.
