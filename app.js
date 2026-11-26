@@ -3,7 +3,7 @@ import { balancedMatch, validateBalancedAssignments } from './matching.js';
 import {
   configured, firebaseClient, createSession, joinSession, getSession,
   listenSession, listenParticipants, listenSelf, currentUid,
-  submitRoles, publishAssignments
+  submitRoles, publishAssignments, deleteCompletedSession
 } from './firebase-service.js';
 
 const app = document.getElementById('app');
@@ -103,7 +103,7 @@ function landingView() {
     <div class="titleline">✦　WELCOME TO INSURANCE QUEST</div>
     <h2>${isDirect?'加入保險職能冒險':'你是哪種保險職場人才？'}</h2>
     <p class="subhead">透過八道情境選擇題，探索自己的選擇傾向。完成作答後，將依全體結果分成 A、B、C、D 四個任務小隊。</p>
-    <div class="stat-grid"><div class="stat"><strong>08</strong><span>職能分組題</span></div><div class="stat"><strong>06</strong><span>每組人數</span></div><div class="stat"><strong>04</strong><span>任務小隊</span></div></div>
+    <div class="stat-grid"><div class="stat"><strong>08</strong><span>職能分組題</span></div><div class="stat"><strong>6–7</strong><span>每組人數</span></div><div class="stat"><strong>04</strong><span>任務小隊</span></div></div>
     ${isOnline ? `<div class="notice success">多人連線已啟用，主持人可建立房間並產生專屬 QR Code。</div>` : ''}
     <div class="field"><label for="nickname">你的遊戲暱稱</label><input id="nickname" maxlength="24" autocomplete="nickname" placeholder="例如：小安" value="${el(state.nickname)}" /></div>
     ${isOnline ? `<div class="field"><label for="room-code">活動房間代碼</label><input id="room-code" maxlength="6" autocapitalize="characters" spellcheck="false" placeholder="六碼代碼，或直接掃 QR Code" value="${el(state.inputRoom)}" /></div>`:''}
@@ -140,7 +140,7 @@ function waitView() {
       <p>${el(state.nickname)}，你的 8 道選擇題已送出。${state.mode==='demo'?'作答完成，接下來可以檢視你的示範結果。':'等待其他夥伴完成後，由主持人統一公布分組結果。'}</p>
     </div>
     ${state.mode==='demo'?`<div class="notice warning">以下顯示的是個人最高選擇次數所對應的示範組別。</div>`:
-      `<div class="stat-grid"><div class="stat"><strong>${joined}/24</strong><span>已加入</span></div><div class="stat"><strong>${done}/24</strong><span>已交卷</span></div><div class="stat"><strong>4 × 6</strong><span>預計分組</span></div></div>
+      `<div class="stat-grid"><div class="stat"><strong>${joined}/25</strong><span>已加入</span></div><div class="stat"><strong>${done}/25</strong><span>已交卷</span></div><div class="stat"><strong>6/6/6/7</strong><span>預計分組</span></div></div>
         <div class="notice">正在同步等待主持人公布分組，畫面會自動更新，不需要重新整理。</div>`}
     ${state.mode==='demo'?`<div class="actions">${actionButton('demo-reveal','模擬公布分組 →','primary',false,'full')}</div>`:''}
   `,'TEAM MATCHING · WAITING');
@@ -152,12 +152,12 @@ function teamView() {
   const scores = roleScores(state.roleAnswers);
   return layout(`
     <div class="center"><div class="confetti" aria-hidden="true">🎉</div><div class="titleline" style="justify-content:center">THE TEAM REVEAL</div>
-      <h2>歡迎加入你的任務小隊！</h2><p>${el(state.nickname)}，這是${state.mode==='demo'?'依個人作答偏好顯示':'根據全體 24 人答案最佳化配對'}的分組結果。</p></div>
+      <h2>歡迎加入你的任務小隊！</h2><p>${el(state.nickname)}，這是${state.mode==='demo'?'依個人作答偏好顯示':'根據全體 25 人答案最佳化配對'}的分組結果。</p></div>
     <div class="team-card" style="--team-color:${team.color}"><div class="team-icon" aria-hidden="true">${team.icon}</div><small>${team.en}</small>
       <h2>${el(team.short)}</h2><p>你的最終分組</p></div>
     <div class="scores"><div class="titleline" style="margin-bottom:0">你的分組選擇分布</div>
     ${DEPARTMENTS.map((d,i)=>`<div class="score-row"><span>${el(d.name)}</span><div class="score-meter"><div style="--score-color:${d.color};--score-width:${scores[i]/8*100}%"></div></div><b>${scores[i]}</b></div>`).join('')}</div>
-    <div class="notice ${state.mode==='demo'?'warning':''}">${state.mode==='demo'?'恭喜完成作答，結果將顯示你的最高選擇次數所對應的示範組別':'你的正式組別由全體答案統一分配，每組 6 人；選擇分布是個人作答參考，不一定等於最終分組。'}</div>
+    <div class="notice ${state.mode==='demo'?'warning':''}">${state.mode==='demo'?'恭喜完成作答，結果將顯示你的最高選擇次數所對應的示範組別':'你的正式組別由全體答案統一分配，各組為 6、6、6、7 人；選擇分布是個人作答參考，不一定等於最終分組。'}</div>
     <div class="line"></div>
     <div class="stage-box"><span class="stage-number">💬</span><div><b>分組完成 · 開始破冰</b><p>找到同組夥伴，分享名字與一個平常會做的健康習慣。</p></div></div>
     ${state.mode==='demo'?`<div class="actions">${actionButton('restart-demo','重新作答 ↻','secondary',false,'full')}</div>`:`<div class="notice success" style="margin-top:20px">遊戲已完成，請依主持人指示到所屬組別集合。</div>`}
@@ -166,12 +166,12 @@ function teamView() {
 function hostEntryView() {
   return layout(`
     <div class="titleline">✦　FACILITATOR CONTROL</div><h2>主持人控制台</h2>
-    <p class="subhead">建立專屬活動房間，取得 QR Code，讓 24 位學員掃描進入。同時掌握作答進度，待全員完成後一鍵公布四組結果。</p>
+    <p class="subhead">建立專屬活動房間，取得 QR Code，讓 25 位學員掃描進入。同時掌握作答進度，待全員完成後一鍵公布四組結果。</p>
     ${!isOnline?`<div class="notice warning" style="margin-top:20px">目前尚未設定 Firebase，無法建立真正的多人房間。請依 README 完成連線設定。</div>`:''}
     <div class="stage-box" style="margin-top:22px"><span class="stage-number">01</span><div><b>建立房間、分享 QR Code</b><p>玩家掃描 QR Code 加入同一個活動房間。</p></div></div>
     <div class="stage-box" style="margin-top:9px"><span class="stage-number">02</span><div><b>學員完成 8 道情境題</b><p>每位學員自由選擇，系統收集全體答案。</p></div></div>
-    <div class="stage-box" style="margin-top:9px"><span class="stage-number">03</span><div><b>公布四組，每組 6 人</b><p>配對完成後，學員查看自己的 A、B、C 或 D 組。</p></div></div>
-    <div class="actions">${actionButton('create-room','建立 24 人活動房間 →','primary',!isOnline,'full large')}</div>
+    <div class="stage-box" style="margin-top:9px"><span class="stage-number">03</span><div><b>公布四組，人數為 6／6／6／7</b><p>配對完成後，學員查看自己的 A、B、C 或 D 組。</p></div></div>
+    <div class="actions">${actionButton('create-room','建立 25 人活動房間 →','primary',!isOnline,'full large')}</div>
     <p class="micro">主持人請使用同一台裝置與瀏覽器管理房間，匿名驗證身分會保留在該瀏覽器。</p>
   `,'FACILITATOR · HOST');
 }
@@ -181,12 +181,12 @@ function hostView() {
   const joined = state.room.joinedCount;
   const rolesDone = players.filter(p=>p.submitted).length;
   const isAssigned = state.room.status === 'assigned';
-  const canPublish = !isAssigned && joined===24 && players.length===24 && rolesDone===24 && !state.busy;
+  const canPublish = !isAssigned && joined===25 && players.length===25 && rolesDone===25 && !state.busy;
   const link = urlForRoom(state.code);
   const teamMembers = DEPARTMENTS.map((d,i) => players.filter(p=>state.room.assignments?.[p.uid]===i));
   return layout(`
     <div class="titleline">✦　LIVE SESSION CONTROL</div><h2>現場活動管理</h2>
-    <div class="stat-grid"><div class="stat"><strong>${joined}/24</strong><span>已加入</span></div><div class="stat"><strong>${rolesDone}/24</strong><span>完成分組題</span></div><div class="stat"><strong>4 × 6</strong><span>預定分組</span></div></div>
+    <div class="stat-grid"><div class="stat"><strong>${joined}/25</strong><span>已加入</span></div><div class="stat"><strong>${rolesDone}/25</strong><span>完成分組題</span></div><div class="stat"><strong>6/6/6/7</strong><span>預定分組</span></div></div>
     <div class="host-cols">
       <div class="card-mini"><h3>學員入場 QR Code</h3><div class="join-code">${el(state.code)}</div>
         <div class="qr-panel" id="qr-panel"><canvas id="join-qr" width="220" height="220" aria-label="學員掃描 QR Code"></canvas>
@@ -200,12 +200,14 @@ function hostView() {
     </div>
     <div class="line"></div>
     ${!isAssigned?`<div class="titleline">✦　公布分組</div>
-      <p class="subhead">必須 <strong>24 人全部完成 8 題</strong> 才能公布結果。系統統一計算全部 24 人的答案，依偏好最佳化配對，A、B、C、D 四組各固定 6 人，不會超收。</p>
-      <div class="actions">${actionButton('publish','全員完成，公布 4 組 × 6 人 →','green',!canPublish,'full')}</div>
+      <p class="subhead">必須 <strong>25 人全部完成 8 題</strong> 才能公布結果。系統統一計算全部 25 人的答案，依偏好最佳化配對，A、B、C、D 四組分別為 6、6、6、7 人，任何組別都不會超過 7 人。</p>
+      <div class="actions">${actionButton('publish','全員完成，公布 4 組（6／6／6／7）→','green',!canPublish,'full')}</div>
       ${!canPublish?'<p class="micro">名額或交卷人數不足時，按鈕會保持停用。</p>':''}`:
       `<div class="titleline">✦　分組已公布，學員手機會自動更新</div>
         <div class="team-list">${DEPARTMENTS.map((d,i)=>`<div class="mini-team"><strong>${el(d.name)} · ${teamMembers[i].length} 人</strong>${teamMembers[i].map(p=>`<span>${el(p.nickname)}</span>`).join('')}</div>`).join('')}</div>
-        <div class="actions">${actionButton('export-csv','匯出分組與作答 CSV','secondary',false,'full')}</div>`}
+        <div class="actions">${actionButton('export-csv','匯出分組與作答 CSV','secondary',false,'full')}</div>
+        <div class="stage-box" style="margin-top:20px"><span class="stage-number">🧹</span><div><b>活動結束後清除資料</b><p>全部組員已確認分組後，主持人可清除本場 25 人的暱稱、作答及分組紀錄。清除後無法恢復，這個房間也不能再使用。</p></div></div>
+        <div class="actions">${actionButton('delete-completed-room','結束活動並清除本場資料','secondary',state.busy,'full')}</div>`}
     <div class="notice" style="margin-top:18px">活動房間代碼：<strong>${el(state.code)}</strong>。重新開啟主持人網址可查看目前活動，但需使用同一個已登入的瀏覽器。</div>
   `,'HOST PANEL · REAL TIME',isAssigned?'分組已完成':'即時同步');
 }
@@ -318,7 +320,11 @@ async function handleAction(action) {
       if(state.roleIndex<7) {state.roleIndex++;render();return;}
       if(!allRolesChosen()) {setError('還有未完成的職能題，請先作答。');return;}
       if(state.mode==='demo') {state.screen='wait';render();return;}
-      await busyOperation(async()=>{await submitRoles(state.code,[...state.roleAnswers]);state.screen='wait';});
+      await busyOperation(async()=>{
+        await submitRoles(state.code,[...state.roleAnswers]);
+        try { window.localStorage.removeItem(getCacheKey('role')); } catch { /* storage restricted */ }
+        state.screen='wait';
+      });
       break;
     }
     case 'demo-reveal': {state.screen='team';render();break;}
@@ -341,12 +347,24 @@ async function handleAction(action) {
       });break;
     }
     case 'publish': {
-      if(state.room?.status!=='lobby'||state.players.length!==24||state.players.some(p=>!p.submitted)) return;
+      if(state.room?.status!=='lobby'||state.players.length!==25||state.players.some(p=>!p.submitted)) return;
       await busyOperation(async()=>{
         const groups=balancedMatch(state.players,6);
         validateBalancedAssignments(groups,6);
         await publishAssignments(state.code,groups);
       });break;
+    }
+    case 'delete-completed-room': {
+      if (state.room?.status!=='assigned' || state.mode!=='online' || !state.hosting) return;
+      if (!window.confirm(`確定要永久清除活動房間 ${state.code} 的作答及分組資料嗎？\n\n清除後此房間連結及 QR Code 會失效，無法恢復。請先確認學員已看到各自組別。`)) return;
+      await busyOperation(async()=>{
+        await deleteCompletedSession(state.code);
+        cleanupListeners();
+        state.code=''; state.room=null; state.players=[]; state.member=null;
+        state.screen='host-entry';
+        history.replaceState({},'',window.location.pathname+'?host=1');
+      });
+      break;
     }
     case 'copy-link': await copyLink();break;
     case 'download-qr': downloadQr();break;

@@ -11,20 +11,24 @@ service cloud.firestore {
     function validAnswerArray(a, n) {
       return a is list && a.size() == n;
     }
-    // Enforce all four teams have exactly six members, even if a client
-    // tries to upload a malformed assignment map directly.
+    // Enforce exactly three six-person teams and one seven-person team.
+    // The seventh seat can belong to any one of A, B, C or D.
     function countTeam(groups, team) {
       return groups.size() - groups.removeAll([team]).size();
     }
-    function isBalanced24(assignments) {
+    function isBalanced25(assignments) {
       let groups = assignments.values();
+      let a = countTeam(groups, 0);
+      let b = countTeam(groups, 1);
+      let c = countTeam(groups, 2);
+      let d = countTeam(groups, 3);
       return assignments is map
-        && assignments.size() == 24
+        && assignments.size() == 25
         && groups.hasOnly([0, 1, 2, 3])
-        && countTeam(groups, 0) == 6
-        && countTeam(groups, 1) == 6
-        && countTeam(groups, 2) == 6
-        && countTeam(groups, 3) == 6;
+        && a >= 6 && a <= 7
+        && b >= 6 && b <= 7
+        && c >= 6 && c <= 7
+        && d >= 6 && d <= 7;
     }
     match /sessions/{code} {
       allow read: if loggedIn();
@@ -33,16 +37,19 @@ service cloud.firestore {
         && request.resource.data.code == code
         && request.resource.data.status == 'lobby'
         && request.resource.data.joinedCount == 0
-        && request.resource.data.maxPlayers == 24
+        && request.resource.data.maxPlayers == 25
         && request.resource.data.assignments == {};
-      allow delete: if false;
+      // The room host may discard a finished event after all groups are published.
+      allow delete: if loggedIn()
+        && request.auth.uid == resource.data.hostId
+        && resource.data.status == 'assigned';
       allow update: if loggedIn() && (
         // Only original host may publish grouping.
         (request.auth.uid == resource.data.hostId
           && resource.data.status == 'lobby'
           && request.resource.data.status == 'assigned'
-          && request.resource.data.joinedCount == 24
-          && isBalanced24(request.resource.data.assignments)
+          && request.resource.data.joinedCount == 25
+          && isBalanced25(request.resource.data.assignments)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'status', 'assignments', 'assignedAt'
           ]))
@@ -60,7 +67,10 @@ service cloud.firestore {
 
       match /participants/{uid} {
         allow read: if loggedIn();
-        allow delete: if false;
+        // Only the host may remove the finished room's participant records.
+        allow delete: if loggedIn()
+          && get(roomPath(code)).data.hostId == request.auth.uid
+          && get(roomPath(code)).data.status == 'assigned';
         allow create: if loggedIn() && request.auth.uid == uid
           && request.resource.data.uid == uid
           && request.resource.data.nickname is string
