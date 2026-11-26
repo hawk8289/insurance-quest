@@ -10,7 +10,7 @@ window.NANSHAN_GAME_CONFIG = {
     projectId: "insurance-quest-40470",
     appId: "1:846994527583:web:72c5f3e4de08924e48d2ea"
   },
-  maxPlayers: 24,
+  maxPlayers: 25,
   teamSize: 6
 };
 
