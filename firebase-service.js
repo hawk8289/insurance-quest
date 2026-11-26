@@ -1,4 +1,4 @@
-import { validateBalancedAssignments } from './matching.js?v=25p-20261126';
+import { validateBalancedAssignments } from './matching.js?v=25p-stable-20261126c';
 /** Firebase is loaded ONLY for real multiplayer; offline demo needs no Firebase or build. */
 const VERSION = '11.10.0';
 let fb = null;

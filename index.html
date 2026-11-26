@@ -7,13 +7,25 @@
   <meta name="description" content="保險職能冒險：透過八道選擇題完成 A、B、C、D 四組分組。" />
   <title>保險職能冒險｜Insurance Quest</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
-  <link rel="stylesheet" href="style.css?v=25p-20261126" />
-  <script src="config.js?v=25p-20261126"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-  <script type="module" src="app.js?v=25p-20261126"></script>
+  <link rel="stylesheet" href="style.css?v=25p-stable-20261126c" />
+  <script src="config.js?v=25p-stable-20261126c"></script>
+  <script async src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script>
+    // Keep an actionable screen visible if a JS module fails to load.
+    window.addEventListener('error', function(event) {
+      const source = event.filename || event.target?.src || '';
+      if (source.includes('qrcode.min.js')) return;
+      const isScriptError = /\.js([?#]|$)/.test(source) || /module|import|export|syntax/i.test(event.message || '');
+      if (!isScriptError || document.querySelector('#app .shell')) return;
+      const root = document.getElementById('app');
+      if (!root) return;
+      root.innerHTML = '<div style="max-width:670px;margin:12vh auto;padding:28px;font:16px system-ui;color:#153c62;background:#f3f7fb;border-radius:16px"><h1>遊戲載入失敗</h1><p>可能是網頁正在更新或程式檔版本不一致。請重新整理；若仍無法進入，請告知主持人。</p><a href="?host=1&retry=1">重新載入主持人頁面</a></div>';
+    }, true);
+  </script>
+  <script type="module" src="app.js?v=25p-stable-20261126c"></script>
 </head>
 <body>
-  <div id="app" aria-live="polite"></div>
+  <div id="app" aria-live="polite"><div style="text-align:center;padding:12vh 20px;font:16px system-ui;color:#315c85">Insurance Quest 正在載入…</div></div>
   <noscript>此遊戲需要啟用 JavaScript 才能作答。</noscript>
 </body>
 </html>

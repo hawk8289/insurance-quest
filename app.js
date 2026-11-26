@@ -1,10 +1,10 @@
 import { DEPARTMENTS, ROLE_QUESTIONS, roleScores } from './questions.js';
-import { balancedMatch, validateBalancedAssignments } from './matching.js?v=25p-20261126';
+import { balancedMatch, validateBalancedAssignments } from './matching.js?v=25p-stable-20261126c';
 import {
   configured, firebaseClient, createSession, joinSession, getSession,
   listenSession, listenParticipants, listenSelf, currentUid,
   submitRoles, publishAssignments, deleteCompletedSession
-} from './firebase-service.js?v=25p-20261126';
+} from './firebase-service.js?v=25p-stable-20261126c';
 
 const app = document.getElementById('app');
 const url = new URL(window.location.href);
@@ -220,14 +220,29 @@ function render() {
   if (state.screen==='host' && state.room) void renderQr();
 }
 let qrRenderingFor='';
+let qrCachedDataUrl='';
+let qrCachedLink='';
 async function renderQr() {
   const canvas = document.getElementById('join-qr');
   if (!canvas) return;
   const link = urlForRoom(state.code);
-  // CDN QRCode generates the bitmap locally; no URL is sent to the QR provider.
+  // Reuse the QR bitmap across roster updates instead of generating it repeatedly.
+  if (qrCachedLink === link && qrCachedDataUrl) {
+    const image = new Image();
+    image.onload = () => {
+      if (!canvas.isConnected) return;
+      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+      qrRenderingFor = link;
+    };
+    image.src = qrCachedDataUrl;
+    return;
+  }
+  // The QR library loads asynchronously; a public image fallback is available.
   if (window.QRCode?.toCanvas) {
     try {
       await window.QRCode.toCanvas(canvas, link, {width:220,margin:2,errorCorrectionLevel:'H',color:{dark:'#073E70',light:'#FFFFFF'}});
+      qrCachedLink=link;
+      qrCachedDataUrl=canvas.toDataURL('image/png');
       qrRenderingFor=link; return;
     } catch(err) { console.warn('QR code generation failed',err); }
   }
