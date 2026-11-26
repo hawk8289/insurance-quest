@@ -1,4 +1,4 @@
-import { validateBalancedAssignments } from './matching.js';
+import { validateBalancedAssignments } from './matching.js?v=25p-20261126';
 /** Firebase is loaded ONLY for real multiplayer; offline demo needs no Firebase or build. */
 const VERSION = '11.10.0';
 let fb = null;
@@ -18,7 +18,7 @@ export async function firebaseClient() {
   const app = appLib.initializeApp(window.NANSHAN_GAME_CONFIG.firebase);
   const auth = authLib.getAuth(app);
   // Restore an existing anonymous identity before creating a new one;
-  // otherwise a reload could accidentally consume another one of the 24 seats.
+  // otherwise a reload could accidentally consume another one of the 25 seats.
   await auth.authStateReady();
   const user = auth.currentUser || (await authLib.signInAnonymously(auth)).user;
   const db = dbLib.getFirestore(app);
@@ -44,7 +44,7 @@ export async function createSession() {
         if (existing.exists()) throw new Error('ROOM_COLLISION');
         tx.set(ref, {
           code, hostId: f.user.uid, status: 'lobby',
-          maxPlayers: 24, joinedCount: 0, assignments: {},
+          maxPlayers: 25, joinedCount: 0, assignments: {},
           createdAt: f.serverTimestamp()
         });
       });
@@ -66,7 +66,7 @@ export async function joinSession(code, nickname) {
     if (member.exists()) return; // same anonymous user may rejoin after refresh
     const session = room.data();
     if (session.status !== 'lobby') throw new Error('活動已經完成分組，無法加入新玩家。');
-    if (session.joinedCount >= session.maxPlayers) throw new Error('此活動已達 24 人上限。');
+    if (session.joinedCount >= session.maxPlayers) throw new Error(`此活動已達 ${session.maxPlayers} 人上限。`);
     tx.set(memberRef, {
       uid: f.user.uid, nickname: name, joinOrder: session.joinedCount + 1,
       answers: [], submitted: false,
@@ -102,20 +102,20 @@ export async function submitRoles(code, answers) {
   });
 }
 export async function publishAssignments(code, assignments) {
-  // No team can exceed six: validate capacity before attempting a write.
+  // No team can exceed seven: validate capacity before attempting a write.
   validateBalancedAssignments(assignments, 6);
   const f = await firebaseClient();
   const roomRef = f.doc(f.db, 'sessions', code);
   const ids = Object.keys(assignments);
   // A transaction prevents multiple host tabs from publishing conflicting results.
-  // Read all 24 participant records and verify no one is missing or unfinished.
+  // Read all 25 participant records and verify no one is missing or unfinished.
   await f.runTransaction(f.db, async tx => {
     const roomSnap = await tx.get(roomRef);
     if (!roomSnap.exists()) throw new Error('活動房間不存在。');
     const room = roomSnap.data();
     if (room.hostId !== f.user.uid) throw new Error('只有建立房間的主持人能公布分組。');
     if (room.status !== 'lobby') throw new Error('分組已公布，無法重複分配。');
-    if (room.joinedCount !== 24 || room.maxPlayers !== 24) throw new Error('尚未達到 24 位參與者。');
+    if (room.joinedCount !== 25 || room.maxPlayers !== 25) throw new Error('尚未達到 25 位參與者。');
     for (const uid of ids) {
       const memberSnap = await tx.get(f.doc(f.db, 'sessions', code, 'participants', uid));
       if (!memberSnap.exists() || memberSnap.data().submitted !== true
@@ -126,6 +126,26 @@ export async function publishAssignments(code, assignments) {
     tx.update(roomRef, { assignments, status: 'assigned', assignedAt: f.serverTimestamp() });
   });
 }
+/**
+ * Remove this event's room and all 25 answer records in one atomic batch.
+ * The host may perform this only after the group assignment is published.
+ * This does not remove anonymous authentication accounts; see README.
+ */
+export async function deleteCompletedSession(code) {
+  const f = await firebaseClient();
+  const roomRef = f.doc(f.db, 'sessions', code);
+  const roomSnap = await f.getDoc(roomRef);
+  if (!roomSnap.exists()) throw new Error('房間已不存在或已清除。');
+  if (roomSnap.data().hostId !== f.user.uid) throw new Error('只有建立房間的主持人才能清除資料。');
+  if (roomSnap.data().status !== 'assigned') throw new Error('請先完成並公布分組，再清除資料。');
+  const members = await f.getDocs(f.collection(f.db, 'sessions', code, 'participants'));
+  if (members.size > 25) throw new Error('參與人數異常，已停止清除；請先確認資料庫狀態。');
+  const batch = f.writeBatch(f.db);
+  members.docs.forEach(member => batch.delete(member.ref));
+  batch.delete(roomRef);
+  await batch.commit();
+}
+
 export async function getSession(code) {
   const f = await firebaseClient();
   const doc = await f.getDoc(f.doc(f.db, 'sessions', code));

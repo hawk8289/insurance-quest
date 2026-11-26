@@ -1,10 +1,10 @@
 import { DEPARTMENTS, ROLE_QUESTIONS, roleScores } from './questions.js';
-import { balancedMatch, validateBalancedAssignments } from './matching.js';
+import { balancedMatch, validateBalancedAssignments } from './matching.js?v=25p-20261126';
 import {
   configured, firebaseClient, createSession, joinSession, getSession,
   listenSession, listenParticipants, listenSelf, currentUid,
   submitRoles, publishAssignments, deleteCompletedSession
-} from './firebase-service.js';
+} from './firebase-service.js?v=25p-20261126';
 
 const app = document.getElementById('app');
 const url = new URL(window.location.href);
@@ -200,7 +200,7 @@ function hostView() {
     </div>
     <div class="line"></div>
     ${!isAssigned?`<div class="titleline">✦　公布分組</div>
-      <p class="subhead">必須 <strong>25 人全部完成 8 題</strong> 才能公布結果。系統統一計算全部 25 人的答案，依偏好最佳化配對，A、B、C、D 四組分別為 6、6、6、7 人，任何組別都不會超過 7 人。</p>
+      <p class="subhead">必須 <strong>25 人全部完成 8 題</strong> 才能公布結果。系統統一計算全部 25 人的答案，依偏好最佳化配對，四組人數為 6／6／6／7，系統依全體答案決定哪一組安排 7 人，任何組別都不會超過 7 人。</p>
       <div class="actions">${actionButton('publish','全員完成，公布 4 組（6／6／6／7）→','green',!canPublish,'full')}</div>
       ${!canPublish?'<p class="micro">名額或交卷人數不足時，按鈕會保持停用。</p>':''}`:
       `<div class="titleline">✦　分組已公布，學員手機會自動更新</div>
